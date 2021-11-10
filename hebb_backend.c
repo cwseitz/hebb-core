@@ -62,9 +62,11 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
   int flag=0;
   int i;
 
+  // printf("Spikes: %f\n", ns);
+  // printf("Max Spikes: %f\n", maxns);
   for(i=1;i<Nt && ns<maxns;i++){
+       printf("Time step: %d/%d\n", i, Nt);
        for(j=0;j<N;j++){
-
            alphae[j]-=alphae[j]*(dt/tausyne);
            alphai[j]-=alphai[j]*(dt/tausyni);
            alphax[j]-=alphax[j]*(dt/tausynx);
@@ -161,6 +163,9 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
               if(drand48()<rxi*dt)
                   alphax[j]+=Jix/tausynx;
   }
+
+  if(ns>=maxns)
+     printf("Maximum number of spikes reached (%d), simulation terminated.\n", ns);
 
   return 0;
 
