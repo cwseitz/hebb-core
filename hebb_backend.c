@@ -17,6 +17,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
          double *alphai, double *alphax, int *Wee,int *Wei,int *Wie,int *Wii,int *refstate){
 
    int j, jj, k;
+
   /* Inititalize v */
   for(j=0;j<N;j++){
       v[j]=v0[j];
@@ -355,6 +356,16 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       printf("Jii = %f\n",Jii);
       printf("Ne1 = %d\n",Ne1);
       printf("Ni1 =  %d\n",Ni1);
+
+      printf("gl =  %f,%f\n",gl[0],gl[1]);
+      printf("Cm = %f,%f\n",Cm[0],Cm[1]);
+      printf("vlb = %f,%f\n",vlb[0],vlb[1]);
+      printf("vth = %f,%f\n",vth[0],vth[1]);
+      printf("DeltaT = %f,%f\n",DeltaT[0],DeltaT[1]);
+      printf("vT = %f,%f\n",vT[0],vT[1]);
+      printf("vl = %f,%f\n",vl[0],vl[1]);
+      printf("vre = %f,%f\n",vre[0],vre[1]);
+      printf("tref = %f,%f\n",tref[0],tref[1]);
       printf("###################\n\n");
 
       sim(N,Nrecord,T,Nt,Ne,Ni,q,dt,pee0,pei0,pie0,pii0,jee,jei,jie,jii,
@@ -371,7 +382,26 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
     memcpy(PyArray_DATA(alphaer_out), alphaer, Nrecord*Nt*sizeof(double));
     free(alphaer);
 
-    return alphaer_out;
+    PyObject *alphair_out = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    memcpy(PyArray_DATA(alphair_out), alphair, Nrecord*Nt*sizeof(double));
+    free(alphair);
+
+    PyObject *alphaxr_out = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    memcpy(PyArray_DATA(alphaxr_out), alphaxr, Nrecord*Nt*sizeof(double));
+    free(alphaxr);
+
+    PyObject *vr_out = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    memcpy(PyArray_DATA(vr_out), vr, Nrecord*Nt*sizeof(double));
+    free(vr);
+
+    return Py_BuildValue("(OOOO)", vr_out, alphaer_out, alphair_out, alphaxr_out);
+}
+
+void print_double_arr(double arr[], int SIZE) {
+    int j;
+    for(j = 0; j < SIZE; j++) {
+        printf("%.2f\n",arr[j]);
+    }
 }
 
 static PyMethodDef RNNMethods[] = {
