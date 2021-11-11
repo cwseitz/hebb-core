@@ -10,7 +10,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
          double tausyne, double tausyni, double tausynx, double Jee, double Jei,
          double Jie, double Jii, double maxns, double *gl, double *C, double *vlb,
          double *vth, double *DeltaT, double *vT, double *vl, double *vre, double *tref,
-         double *Ix1e, double *Ix2e, double *Ix1i, double* Ix2i, int nrecord,
+         double *Ix1e, double *Ix2e, double *Ix1i, double* Ix2i,
          int *Irecord, double *v0, double rxe, double rxi, double Jex, double Jix,
          int Ne1, int Ni1, double *s, double *alphaxr,double *alphaer,double *alphair,
          double *vr, double *v, double *JnextE, double *JnextI, double *alphae,
@@ -65,7 +65,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
   // printf("Spikes: %f\n", ns);
   // printf("Max Spikes: %f\n", maxns);
   for(i=1;i<Nt && ns<maxns;i++){
-       printf("Time step: %d/%d\n", i, Nt);
+       //printf("Time step: %d/%d\n", i, Nt);
        for(j=0;j<N;j++){
            alphae[j]-=alphae[j]*(dt/tausyne);
            alphai[j]-=alphai[j]*(dt/tausyni);
@@ -171,7 +171,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
 
 }
 
-  static PyObject* lif(PyObject* Py_UNUSED(self), PyObject* args) {
+  static PyObject* EIF(PyObject* Py_UNUSED(self), PyObject* args) {
 
     PyObject* list;
 
@@ -309,7 +309,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
         if (PyErr_Occurred()) return NULL;
       }
 
-      int* V0 = malloc(N*sizeof(double));
+      double* V0 = malloc(N*sizeof(double));
       PyObject* _V0 = PyList_GetItem(list, 52);
       Py_ssize_t _V0_size = PyList_Size(_V0);
       for (Py_ssize_t j = 0; j < _V0_size; j++) {
@@ -376,12 +376,11 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       sim(N,Nrecord,T,Nt,Ne,Ni,q,dt,pee0,pei0,pie0,pii0,jee,jei,jie,jii,
           wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,mxe0,mxi0,vxe,vxi,
           tausyne,tausyni,tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,
-          DeltaT,vT,vl,vre,tref,Ix1e,Ix2e,Ix1i,Ix2i,nrecord,Irecord,V0,
+          DeltaT,vT,vl,vre,tref,Ix1e,Ix2e,Ix1i,Ix2i,Irecord,V0,
           rxe,rxi,Jex,Jix,Ne1,Ni1,s,alphaxr,alphaer,alphair,vr,v,JnextE,
           JnextI,alphae,alphai,alphax,Wee,Wei,Wie,Wii,refstate);
 
-
-    npy_intp dims[2] = {Nrecord, Nt}; //row major order
+    npy_intp dims[2] = {Nt, Nrecord}; //row major order
     //Copy data into python list objects and free mem
     PyObject *alphaer_out = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
     memcpy(PyArray_DATA(alphaer_out), alphaer, Nrecord*Nt*sizeof(double));
@@ -399,7 +398,13 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
     memcpy(PyArray_DATA(vr_out), vr, Nrecord*Nt*sizeof(double));
     free(vr);
 
-    return Py_BuildValue("(OOOO)", vr_out, alphaer_out, alphair_out, alphaxr_out);
+    npy_intp sdims[2] = {maxns,2};
+    PyObject *s_out = PyArray_SimpleNew(2, sdims, NPY_DOUBLE);
+    memcpy(PyArray_DATA(s_out), s, 2*maxns*sizeof(double));
+    free(s);
+
+
+    return Py_BuildValue("(OOOOO)", s_out, vr_out, alphaer_out, alphair_out, alphaxr_out);
 }
 
 void print_double_arr(double arr[], int SIZE) {
@@ -410,7 +415,7 @@ void print_double_arr(double arr[], int SIZE) {
 }
 
 static PyMethodDef RNNMethods[] = {
-    {"lif", lif, METH_VARARGS, "Python interface for lif network in C"},
+    {"EIF", EIF, METH_VARARGS, "Python interface for EIF network in C"},
     {NULL, NULL, 0, NULL}
 };
 
