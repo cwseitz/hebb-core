@@ -1,22 +1,32 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <stdio.h>
+#include <gsl_randist.h>
+#include <gsl_rng.h>
+#include <sys/time.h>
+
 
 void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
          double dt, double pee0, double pei0, double pie0, double pii0,
          double jee, double jei, double jie, double jii, double wee0,
          double wei0, double wie0, double wii0, int Kee, int Kei, int Kie,
-         int Kii, double taux, double mxe0, double mxi0, double vxe, double vxi,
+         int Kii, double taux, double mxe, double mxi, double vxe, double vxi,
          double tausyne, double tausyni, double tausynx, double Jee, double Jei,
          double Jie, double Jii, double maxns, double *gl, double *C, double *vlb,
          double *vth, double *DeltaT, double *vT, double *vl, double *vre, double *tref,
-         double *Ix1e, double *Ix2e, double *Ix1i, double* Ix2i,
-         int *Irecord, double *v0, double rxe, double rxi, double Jex, double Jix,
-         int Ne1, int Ni1, double *s, double *alphaxr,double *alphaer,double *alphair,
-         double *vr, double *v, double *JnextE, double *JnextI, double *alphae,
-         double *alphai, double *alphax, int *Wee,int *Wei,int *Wie,int *Wii,int *refstate){
+         int *Irecord, double *v0, double *s,
+         double *alphaxr,double *alphaer,double *alphair, double *vr, double *v,
+         double *JnextE, double *JnextI, double *alphae, double *alphai,
+         double *alphax, int *Wee,int *Wei,int *Wie,int *Wii,int *refstate){
 
    int j, jj, k;
+
+   // gsl_vector *mu_e = gsl_vector_alloc(N);
+   // gsl_vector_set_all(mu_e, mxe);
+   // gsl_vector *mu_i = gsl_vector_alloc(N);
+   // gsl_vector_set_all(mu_i, mxi);
+   // gsl_matrix *cov = gsl_matrix_alloc(N,N);
+   // gsl_matrix_set_identity(cov);
 
   /* Inititalize v */
   for(j=0;j<N;j++){
@@ -61,23 +71,38 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
   int ns=0;
   int flag=0;
   int i;
+  double Ixe, Ixi;
+  struct timeval tv; // Seed generation based on time
+  gsl_rng *r = gsl_rng_alloc(gsl_rng_taus);
 
   // printf("Spikes: %f\n", ns);
   // printf("Max Spikes: %f\n", maxns);
   for(i=1;i<Nt && ns<maxns;i++){
-       //printf("Time step: %d/%d\n", i, Nt);
+      if (i % 100 == 0) {
+      printf("Time step: %d/%d\n", i, Nt);
+      }
+
+
        for(j=0;j<N;j++){
+
            alphae[j]-=alphae[j]*(dt/tausyne);
            alphai[j]-=alphai[j]*(dt/tausyni);
            alphax[j]-=alphax[j]*(dt/tausynx);
 
+           gettimeofday(&tv,0);
+           unsigned long mySeed = tv.tv_sec + tv.tv_usec;
+           gsl_rng_set(r, mySeed);
+
            if(j<Ne){
+               Ixe = mxe + gsl_ran_gaussian(r, sqrt(vxe));
+               //printf("%f\n", Ixe);
                if(refstate[j]<=0){
                   v[j]+=(alphae[j]+alphai[j]+alphax[j]-gl[0]*(v[j]-vl[0])+gl[0]*DeltaT[0]*exp((v[j]-vT[0])/DeltaT[0]))*dt/C[0];
-                  if(j<Ne1)
-                      v[j]+=Ix1e[i]*dt/C[0];
-                  else
-                      v[j]+=Ix2e[i]*dt/C[0];
+                  v[j]+=Ixe*dt/C[1];
+                  // if(j<Ne1)
+                  //     v[j]+=Ix1e[i]*dt/C[0];
+                  // else
+                  //     v[j]+=Ix2e[i]*dt/C[0];
                   v[j]=fmax(v[j],vlb[0]);
                }
                else{
@@ -105,13 +130,14 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
                 }
            }
            else{ /* If cell is inhibitory */
-
+               Ixi = mxi + gsl_ran_gaussian(r, sqrt(vxi));
                if(refstate[j]<=0){
                   v[j]+=(alphae[j]+alphai[j]+alphax[j]-gl[1]*(v[j]-vl[1])+gl[1]*DeltaT[1]*exp((v[j]-vT[1])/DeltaT[1]))*dt/C[1];
-                  if(j<Ne+Ni1)
-                      v[j]+=Ix1i[i]*dt/C[1];
-                  else
-                      v[j]+=Ix2i[i]*dt/C[1];
+                  v[j]+=Ixi*dt/C[1];
+                  // if(j<Ne+Ni1)
+                  //     v[j]+=Ix1i[i]*dt/C[1];
+                  // else
+                  //     v[j]+=Ix2i[i]*dt/C[1];
                   v[j]=fmax(v[j],vlb[1]);
                }
                else{
@@ -138,6 +164,8 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
                  }
              }
           }
+
+
           /* Store recorded variables */
           for(jj=0;jj<Nrecord;jj++){
               /* Find index into local variables */
@@ -155,13 +183,14 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
             JnextI[j]=0;
           }
 
-          for(j=0;j<Ne;j++)
-              if(drand48()<rxe*dt)
-                  alphax[j]+=Jex/tausynx;
+          // for(j=0;j<Ne;j++)
+          //     if(drand48()<rxe*dt)
+          //         alphax[j]+=Jex/tausynx;
+          //
+          // for(j=Ne;j<N;j++)
+          //     if(drand48()<rxi*dt)
+          //         alphax[j]+=Jix/tausynx;
 
-          for(j=Ne;j<N;j++)
-              if(drand48()<rxi*dt)
-                  alphax[j]+=Jix/tausynx;
   }
 
   if(ns>=maxns)
@@ -204,8 +233,8 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       int Kie = (int) PyFloat_AsDouble(PyList_GetItem(list, 22));
       int Kii = (int) PyFloat_AsDouble(PyList_GetItem(list, 23));
       double taux = PyFloat_AsDouble(PyList_GetItem(list, 24));
-      double mxe0 = PyFloat_AsDouble(PyList_GetItem(list, 25));
-      double mxi0 = PyFloat_AsDouble(PyList_GetItem(list, 26));
+      double mxe = PyFloat_AsDouble(PyList_GetItem(list, 25));
+      double mxi = PyFloat_AsDouble(PyList_GetItem(list, 26));
       double vxe = PyFloat_AsDouble(PyList_GetItem(list, 27));
       double vxi = PyFloat_AsDouble(PyList_GetItem(list, 28));
       double tausyne = PyFloat_AsDouble(PyList_GetItem(list, 29));
@@ -217,12 +246,12 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       double Jii = PyFloat_AsDouble(PyList_GetItem(list, 35));
       double maxns = PyFloat_AsDouble(PyList_GetItem(list, 36));
 
-      double rxe = PyFloat_AsDouble(PyList_GetItem(list, 53));
-      double rxi = PyFloat_AsDouble(PyList_GetItem(list, 54));
-      double Jex = PyFloat_AsDouble(PyList_GetItem(list, 55));
-      double Jix = PyFloat_AsDouble(PyList_GetItem(list, 56));
-      int Ne1 = (int) PyFloat_AsDouble(PyList_GetItem(list, 57));
-      int Ni1 = (int) PyFloat_AsDouble(PyList_GetItem(list, 58));
+      // double rxe = PyFloat_AsDouble(PyList_GetItem(list, 53));
+      // double rxi = PyFloat_AsDouble(PyList_GetItem(list, 54));
+      // double Jex = PyFloat_AsDouble(PyList_GetItem(list, 55));
+      // double Jix = PyFloat_AsDouble(PyList_GetItem(list, 56));
+      // int Ne1 = (int) PyFloat_AsDouble(PyList_GetItem(list, 57));
+      // int Ni1 = (int) PyFloat_AsDouble(PyList_GetItem(list, 58));
 
       //Chunks of memory passed to the function as pointers
       PyObject* _gl = PyList_GetItem(list, 37);
@@ -279,28 +308,30 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       int* Wie = malloc(Ne*Kie*sizeof(int));
       int* Wii = malloc(Ni*Kii*sizeof(int));
       int* refstate = malloc(N*sizeof(int));
-      double* Ix1e = malloc(Nt*sizeof(double));
-      double* Ix2e = malloc(Nt*sizeof(double));
-      double* Ix1i = malloc(Nt*sizeof(double));
-      double* Ix2i = malloc(Nt*sizeof(double));
 
-      //Feedforward inputs passed to the sim function as pointers
-      PyObject* _Ix1e = PyList_GetItem(list, 46);
-      PyObject* _Ix2e = PyList_GetItem(list, 47);
-      PyObject* _Ix1i = PyList_GetItem(list, 48);
-      PyObject* _Ix2i = PyList_GetItem(list, 49);
 
-      Py_ssize_t _Ix1e_size = PyList_Size(_Ix1e);
-      for (Py_ssize_t j = 0; j < _Ix1e_size; j++) {
-        Ix1e[j] = PyFloat_AsDouble(PyList_GetItem(_Ix1e, j));
-        Ix2e[j] = PyFloat_AsDouble(PyList_GetItem(_Ix2e, j));
-        Ix1i[j] = PyFloat_AsDouble(PyList_GetItem(_Ix1i, j));
-        Ix2i[j] = PyFloat_AsDouble(PyList_GetItem(_Ix2i, j));
-        if (PyErr_Occurred()) return NULL;
-      }
+      // double* Ixe = malloc(Nt*sizeof(double));
+      // double* Ixi = malloc(Nt*sizeof(double));
+      // // double* Ix1i = malloc(Nt*sizeof(double));
+      // // double* Ix2i = malloc(Nt*sizeof(double));
+      //
+      // //Feedforward inputs passed to the sim function as pointers
+      // PyObject* _Ixe = PyList_GetItem(list, 46);
+      // PyObject* _Ixi = PyList_GetItem(list, 47);
+      // // PyObject* _Ix1i = PyList_GetItem(list, 48);
+      // // PyObject* _Ix2i = PyList_GetItem(list, 49);
+      //
+      // Py_ssize_t _Ixe_size = PyList_Size(_Ixe);
+      // for (Py_ssize_t j = 0; j < _Ixe_size; j++) {
+      //   Ixe[j] = PyFloat_AsDouble(PyList_GetItem(_Ixe, j));
+      //   Ixi[j] = PyFloat_AsDouble(PyList_GetItem(_Ixi, j));
+      //   // Ix1i[j] = PyFloat_AsDouble(PyList_GetItem(_Ix1i, j));
+      //   // Ix2i[j] = PyFloat_AsDouble(PyList_GetItem(_Ix2i, j));
+      //   if (PyErr_Occurred()) return NULL;
+      // }
 
-      double nrecord = PyFloat_AsDouble(PyList_GetItem(list, 50));
-      PyObject* _Irecord = PyList_GetItem(list, 51);
+      double nrecord = PyFloat_AsDouble(PyList_GetItem(list, 46));
+      PyObject* _Irecord = PyList_GetItem(list, 47);
       int* Irecord = malloc(nrecord*sizeof(int));
 
       Py_ssize_t _Irecord_size = PyList_Size(_Irecord);
@@ -310,7 +341,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       }
 
       double* V0 = malloc(N*sizeof(double));
-      PyObject* _V0 = PyList_GetItem(list, 52);
+      PyObject* _V0 = PyList_GetItem(list, 48);
       Py_ssize_t _V0_size = PyList_Size(_V0);
       for (Py_ssize_t j = 0; j < _V0_size; j++) {
         V0[j] = PyFloat_AsDouble(PyList_GetItem(_V0, j));
@@ -347,8 +378,8 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       printf("Kie = %d\n",Kie);
       printf("Kii = %d\n",Kii);
       printf("taux = %f\n",taux);
-      printf("mxe0 = %f\n",mxe0);
-      printf("mxi0 = %f\n",mxi0);
+      printf("mxe = %f\n",mxe);
+      printf("mxi = %f\n",mxi);
       printf("vxe = %f\n",vxe);
       printf("vxi = %f\n",vxi);
       printf("tausyne = %f\n",tausyne);
@@ -359,8 +390,8 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       printf("Jei = %f\n",Jei);
       printf("Jie = %f\n",Jie);
       printf("Jii = %f\n",Jii);
-      printf("Ne1 = %d\n",Ne1);
-      printf("Ni1 =  %d\n",Ni1);
+      // printf("Ne1 = %d\n",Ne1);
+      // printf("Ni1 =  %d\n",Ni1);
 
       printf("gl =  %f,%f\n",gl[0],gl[1]);
       printf("Cm = %f,%f\n",Cm[0],Cm[1]);
@@ -374,10 +405,9 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       printf("###################\n\n");
 
       sim(N,Nrecord,T,Nt,Ne,Ni,q,dt,pee0,pei0,pie0,pii0,jee,jei,jie,jii,
-          wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,mxe0,mxi0,vxe,vxi,
+          wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,mxe,mxi,vxe,vxi,
           tausyne,tausyni,tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,
-          DeltaT,vT,vl,vre,tref,Ix1e,Ix2e,Ix1i,Ix2i,Irecord,V0,
-          rxe,rxi,Jex,Jix,Ne1,Ni1,s,alphaxr,alphaer,alphair,vr,v,JnextE,
+          DeltaT,vT,vl,vre,tref,Irecord,V0,s,alphaxr,alphaer,alphair,vr,v,JnextE,
           JnextI,alphae,alphai,alphax,Wee,Wei,Wie,Wii,refstate);
 
     npy_intp dims[2] = {Nt, Nrecord}; //row major order
@@ -407,6 +437,63 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
     return Py_BuildValue("(OOOOO)", s_out, vr_out, alphaer_out, alphair_out, alphaxr_out);
 }
 
+// int* _multi_gauss_ind(int N, double mu0, double sigma0) {
+//
+//   struct timeval tv; // Seed generation based on time
+//   gettimeofday(&tv,0);
+//   unsigned long mySeed = tv.tv_sec + tv.tv_usec;
+//
+//   gsl_rng * r = gsl_rng_alloc (gsl_rng_taus);
+//   gsl_rng_set(r, mySeed);
+//
+//   gsl_vector *mu = gsl_vector_alloc(N);
+//   gsl_vector *res = gsl_vector_alloc(N);
+//   gsl_vector_set_all(mu, mu0);
+//
+//   gsl_matrix *cov = gsl_matrix_alloc(N,N);
+//   gsl_matrix_set_identity(cov);
+//   gsl_ran_multivariate_gaussian(r, mu, cov, res);
+//
+//   int j;
+//   //copy to new array
+//   for(j = 0; j < N; j++) {
+//       ptr[j] = gsl_vector_get(res, j);
+//     }
+//
+//   // gsl_vector_free(mu);
+//   // gsl_vector_free(res);
+//   // gsl_matrix_free(cov);
+//
+//   return res;
+//
+// }
+
+// static PyObject* multi_gauss_ind(PyObject* Py_UNUSED(self), PyObject* args) {
+//
+//   /*
+//   Function for multivariate gaussian with independent variables
+//   This is equivalent to N independent gaussian random variables with mean mu0
+//   and variance sigma0.
+//   */
+//
+//   int N;
+//   double mu0;
+//   double sigma0;
+//
+//   if (!PyArg_ParseTuple(args, "idd", &N, &mu0, &sigma0))
+//     return NULL;
+//
+//   ptr = _multi_gauss_ind(N, mu0, sigma0);
+//
+//   npy_intp dims[1] = {N};
+//   PyObject *mg_out = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
+//   memcpy(PyArray_DATA(mg_out), ptr, N*sizeof(double));
+//   free(ptr);
+//
+//   return Py_BuildValue("O", mg_out);
+//
+// }
+
 void print_double_arr(double arr[], int SIZE) {
     int j;
     for(j = 0; j < SIZE; j++) {
@@ -416,7 +503,8 @@ void print_double_arr(double arr[], int SIZE) {
 
 static PyMethodDef RNNMethods[] = {
     {"EIF", EIF, METH_VARARGS, "Python interface for EIF network in C"},
-    {NULL, NULL, 0, NULL}
+    //{"multi_gauss_ind", multi_gauss_ind, METH_VARARGS, "Generating normally distributed nums" },
+    {NULL, NULL, 0, NULL},
 };
 
 
