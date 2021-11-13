@@ -14,10 +14,10 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
          double tausyne, double tausyni, double tausynx, double Jee, double Jei,
          double Jie, double Jii, double maxns, double *gl, double *C, double *vlb,
          double *vth, double *DeltaT, double *vT, double *vl, double *vre, double *tref,
-         int *Irecord, double *v0, double *s,
-         double *alphaxr,double *alphaer,double *alphair, double *vr, double *v,
-         double *JnextE, double *JnextI, double *alphae, double *alphai,
-         double *alphax, int *Wee,int *Wei,int *Wie,int *Wii,int *refstate){
+         int *Irecord, double *v0, double *s, double *alphaxr,double *alphaer,
+         double *alphair, double *vr, double *v, double *JnextE, double *JnextI,
+         double *alphae, double *alphai, double *alphax, int *Wee,int *Wei,int
+         *Wie,int *Wii,int *refstate, double *ffwd, double *ffwdr){
 
    int j, jj, k;
 
@@ -37,6 +37,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       alphae[j]=0;
       alphai[j]=0;
       alphax[j]=0;
+      ffwd[j]=0;
      }
 
 
@@ -46,6 +47,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
         alphair[jj+Nrecord*0]=alphai[j];
         alphaxr[jj+Nrecord*0]=alphax[j];
         vr[jj+Nrecord*0]=v[j];
+        ffwdr[jj+Nrecord*0]=ffwd[j];
   }
 
 
@@ -94,11 +96,11 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
            gsl_rng_set(r, mySeed);
 
            if(j<Ne){
-               Ixe = mxe + gsl_ran_gaussian(r, sqrt(vxe));
+               ffwd[j] = mxe+gsl_ran_gaussian(r, sqrt(vxe));
                //printf("%f\n", Ixe);
                if(refstate[j]<=0){
                   v[j]+=(alphae[j]+alphai[j]+alphax[j]-gl[0]*(v[j]-vl[0])+gl[0]*DeltaT[0]*exp((v[j]-vT[0])/DeltaT[0]))*dt/C[0];
-                  v[j]+=Ixe*dt/C[1];
+                  v[j]+=ffwd[j]*dt/C[1];
                   // if(j<Ne1)
                   //     v[j]+=Ix1e[i]*dt/C[0];
                   // else
@@ -130,10 +132,10 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
                 }
            }
            else{ /* If cell is inhibitory */
-               Ixi = mxi + gsl_ran_gaussian(r, sqrt(vxi));
+               ffwd[j] = mxi+gsl_ran_gaussian(r, sqrt(vxi));
                if(refstate[j]<=0){
                   v[j]+=(alphae[j]+alphai[j]+alphax[j]-gl[1]*(v[j]-vl[1])+gl[1]*DeltaT[1]*exp((v[j]-vT[1])/DeltaT[1]))*dt/C[1];
-                  v[j]+=Ixi*dt/C[1];
+                  v[j]+=ffwd[j]*dt/C[1];
                   // if(j<Ne+Ni1)
                   //     v[j]+=Ix1i[i]*dt/C[1];
                   // else
@@ -173,6 +175,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
               alphaer[jj+Nrecord*i]=alphae[j];
               alphair[jj+Nrecord*i]=alphai[j];
               alphaxr[jj+Nrecord*i]=alphax[j];
+              ffwdr[jj+Nrecord*i]=ffwd[j];
               vr[jj+Nrecord*i]=v[j];
           }
           /* Propagate spikes */
@@ -303,6 +306,8 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
       double* alphae = malloc(N*sizeof(double));
       double* alphai = malloc(N*sizeof(double));
       double* alphax = malloc(N*sizeof(double));
+      double* ffwd = malloc(N*sizeof(double));
+      double* ffwdr = malloc(Nrecord * Nt * sizeof(double));
       int* Wee = malloc(Ne*Kee*sizeof(int));
       int* Wei = malloc(Ni*Kei*sizeof(int));
       int* Wie = malloc(Ne*Kie*sizeof(int));
@@ -408,7 +413,7 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
           wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,mxe,mxi,vxe,vxi,
           tausyne,tausyni,tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,
           DeltaT,vT,vl,vre,tref,Irecord,V0,s,alphaxr,alphaer,alphair,vr,v,JnextE,
-          JnextI,alphae,alphai,alphax,Wee,Wei,Wie,Wii,refstate);
+          JnextI,alphae,alphai,alphax,Wee,Wei,Wie,Wii,refstate,ffwd,ffwdr);
 
     npy_intp dims[2] = {Nt, Nrecord}; //row major order
     //Copy data into python list objects and free mem
@@ -428,13 +433,17 @@ void sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, double q,
     memcpy(PyArray_DATA(vr_out), vr, Nrecord*Nt*sizeof(double));
     free(vr);
 
+    PyObject *ffwdr_out = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    memcpy(PyArray_DATA(ffwdr_out), ffwdr, Nrecord*Nt*sizeof(double));
+    free(ffwdr);
+
     npy_intp sdims[2] = {maxns,2};
     PyObject *s_out = PyArray_SimpleNew(2, sdims, NPY_DOUBLE);
     memcpy(PyArray_DATA(s_out), s, 2*maxns*sizeof(double));
     free(s);
 
 
-    return Py_BuildValue("(OOOOO)", s_out, vr_out, alphaer_out, alphair_out, alphaxr_out);
+    return Py_BuildValue("(OOOOOO)", s_out, vr_out, alphaer_out, alphair_out, alphaxr_out, ffwdr_out);
 }
 
 // int* _multi_gauss_ind(int N, double mu0, double sigma0) {
