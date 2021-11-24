@@ -42,6 +42,10 @@ static PyObject* FPT_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
       double u1 = PyFloat_AsDouble(PyList_GetItem(list, 17));
       double r0 = PyFloat_AsDouble(PyList_GetItem(list, 18));
 
+      Nloop = (int) floor((Vth-Vlb)/dV); /* number of bins */
+      kre = (int) round((Vr-Vlb)/dV); /* index of reset potential */
+      pi = 3.14159265;
+
       //Print params
       printf("\n\n###################\n");
       printf("Parameters:\n\n");
@@ -59,6 +63,7 @@ static PyObject* FPT_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
       printf("tau_x = %f\n",tau_x);
       printf("Vx = %f\n",Vx);
       printf("gx = %f\n",gx);
+      printf("dV = %f\n",dV);
 
       printf("x0 = %f\n",x0);
       printf("mu_in = %f\n",mu_in);
@@ -74,10 +79,6 @@ static PyObject* FPT_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
         freq[j] = PyFloat_AsDouble(PyList_GetItem(_freq, j));
         if (PyErr_Occurred()) return NULL;
       }
-
-    Nloop = (int)floor((Vth-Vlb)/dV); /* number of bins */
-    kre = (int)round((Vr-Vlb)/dV); /* index of reset potential */
-    pi = 3.14159265;
 
     int Nfreq = PyFloat_AsDouble(PyList_GetItem(list, 20));
     int m = 1;
@@ -168,7 +169,7 @@ static PyObject* FPT_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
 
 }
 
-static PyObject* LA_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
+static PyObject* LR_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
 
   PyObject* list;
 
@@ -201,6 +202,11 @@ static PyObject* LA_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
     double u1 = PyFloat_AsDouble(PyList_GetItem(list, 17));
     double r0 = PyFloat_AsDouble(PyList_GetItem(list, 18));
 
+    Nloop = (int) floor((Vth-Vlb)/dV); /* number of bins */
+    kre = (int) round((Vr-Vlb)/dV); /* index of reset potential */
+    pi = 3.14159265;
+    gamx = gx/gL;
+
     //Print params
     printf("\n\n###################\n");
     printf("Parameters:\n\n");
@@ -226,12 +232,6 @@ static PyObject* LA_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
     printf("r0 = %f\n",r0);
     printf("###################\n\n");
 
-
-
-    Nloop = (int) floor((Vth-Vlb)/dV); /* number of bins */
-    kre = (int) round((Vr-Vlb)/dV); /* index of reset potential */
-    pi = 3.14159265;
-    gamx = gx/gL;
 
     double* P0 = malloc(Nloop*sizeof(double));
     PyObject* _P0 = PyList_GetItem(list, 19);
@@ -1129,7 +1129,7 @@ void print_double_arr(double arr[], int SIZE) {
 static PyMethodDef RNNMethods[] = {
     {"EIF", EIF, METH_VARARGS, "Python interface for EIF network in C"},
     {"FokkerPlanck_EIF", FokkerPlanck_EIF, METH_VARARGS, "Python interface for EIF network in C"},
-    {"LA_EIF", LA_EIF, METH_VARARGS, "Python interface for EIF network in C"},
+    {"LR_EIF", LR_EIF, METH_VARARGS, "Python interface for EIF network in C"},
     {"FPT_EIF", FPT_EIF, METH_VARARGS, "Python interface for EIF network in C"},
     {NULL, NULL, 0, NULL},
 };
