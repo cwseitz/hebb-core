@@ -74,8 +74,8 @@ static PyObject* FPT_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
 
       double* freq = malloc(Nloop*sizeof(double));
       PyObject* _freq = PyList_GetItem(list, 19);
-      //Py_ssize_t _freq_size = PyList_Size(_freq);
-      for (int j = 0; j < Nloop; j++) {
+      Py_ssize_t _freq_size = PyList_Size(_freq);
+      for (int j = 0; j < _freq_size; j++) {
         freq[j] = PyFloat_AsDouble(PyList_GetItem(_freq, j));
         if (PyErr_Occurred()) return NULL;
       }
@@ -166,7 +166,6 @@ static PyObject* FPT_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
   free(beta);
 
   return Py_BuildValue("(OO)",f0r_list,f0i_list);
-
 }
 
 static PyObject* LR_EIF(PyObject* Py_UNUSED(self), PyObject* args) {
