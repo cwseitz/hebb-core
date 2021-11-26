@@ -154,7 +154,6 @@ static PyObject* fp_eif(PyObject* Py_UNUSED(self), PyObject* args) {
    free(J0);
    free(xi);
 
-
   PyObject *x0_out = PyFloat_FromDouble(x0);
   PyObject *r0_out = PyFloat_FromDouble(r0);
   return Py_BuildValue("(OOOOO)",P0_list,p0_list,J0_list,x0_out,r0_out);
