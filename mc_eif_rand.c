@@ -52,7 +52,7 @@ void mc_eif_rand_sim(int N, int Nrecord, double T, int Nt, int Ne, int Ni, doubl
   // printf("Spikes: %f\n", ns);
   // printf("Max Spikes: %f\n", maxns);
   for(i=1;i<Nt && ns<maxns;i++){
-      if (i % 100 == 0) {
+      if (i % 1000 == 0) {
       printf("Time step: %d/%d\n", i, Nt);
       }
 

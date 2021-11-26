@@ -20,26 +20,25 @@ static PyObject* fpt_eif(PyObject* Py_UNUSED(self), PyObject* args) {
     if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &list))
       return NULL;
 
-      int N = PyFloat_AsDouble(PyList_GetItem(list, 0));
-      double gL = PyFloat_AsDouble(PyList_GetItem(list, 1));
-      double C = PyFloat_AsDouble(PyList_GetItem(list, 2));
-      double Delta = PyFloat_AsDouble(PyList_GetItem(list, 3));
-      double VT = PyFloat_AsDouble(PyList_GetItem(list, 4));
-      double VL = PyFloat_AsDouble(PyList_GetItem(list, 5));
-      double Vth = PyFloat_AsDouble(PyList_GetItem(list, 6));
-      double Vlb = PyFloat_AsDouble(PyList_GetItem(list, 7));
-      double dV = PyFloat_AsDouble(PyList_GetItem(list, 8));
-      double Vr = PyFloat_AsDouble(PyList_GetItem(list, 9));
-      double tref = PyFloat_AsDouble(PyList_GetItem(list, 10));
-      double tau_x = PyFloat_AsDouble(PyList_GetItem(list, 11));
-      double Vx = PyFloat_AsDouble(PyList_GetItem(list, 12));
-      double gx = PyFloat_AsDouble(PyList_GetItem(list, 13));
+      double gL = PyFloat_AsDouble(PyList_GetItem(list, 0));
+      double C = PyFloat_AsDouble(PyList_GetItem(list, 1));
+      double Delta = PyFloat_AsDouble(PyList_GetItem(list, 2));
+      double VT = PyFloat_AsDouble(PyList_GetItem(list, 3));
+      double VL = PyFloat_AsDouble(PyList_GetItem(list, 4));
+      double Vth = PyFloat_AsDouble(PyList_GetItem(list, 5));
+      double Vlb = PyFloat_AsDouble(PyList_GetItem(list, 6));
+      double dV = PyFloat_AsDouble(PyList_GetItem(list, 7));
+      double Vr = PyFloat_AsDouble(PyList_GetItem(list, 8));
+      double tref = PyFloat_AsDouble(PyList_GetItem(list, 9));
+      double tau_x = PyFloat_AsDouble(PyList_GetItem(list, 10));
+      double Vx = PyFloat_AsDouble(PyList_GetItem(list, 11));
+      double gx = PyFloat_AsDouble(PyList_GetItem(list, 12));
 
-      double x0 = PyFloat_AsDouble(PyList_GetItem(list, 14));
-      double mu_in = PyFloat_AsDouble(PyList_GetItem(list, 15));
-      double sigma2 = PyFloat_AsDouble(PyList_GetItem(list, 16));
-      double u1 = PyFloat_AsDouble(PyList_GetItem(list, 17));
-      double r0 = PyFloat_AsDouble(PyList_GetItem(list, 18));
+      double x0 = PyFloat_AsDouble(PyList_GetItem(list, 13));
+      double mu_in = PyFloat_AsDouble(PyList_GetItem(list, 14));
+      double sigma2 = PyFloat_AsDouble(PyList_GetItem(list, 15));
+      double u1 = PyFloat_AsDouble(PyList_GetItem(list, 16));
+      double r0 = PyFloat_AsDouble(PyList_GetItem(list, 17));
 
       Nloop = (int) floor((Vth-Vlb)/dV); /* number of bins */
       kre = (int) round((Vr-Vlb)/dV); /* index of reset potential */
@@ -48,7 +47,6 @@ static PyObject* fpt_eif(PyObject* Py_UNUSED(self), PyObject* args) {
       //Print params
       printf("\n\n###################\n");
       printf("Parameters:\n\n");
-      printf("N = %d\n", N);
       printf("Nloop = %d\n", Nloop);
       printf("gL =  %f\n",gL);
       printf("C = %f\n",C);
@@ -72,14 +70,14 @@ static PyObject* fpt_eif(PyObject* Py_UNUSED(self), PyObject* args) {
       printf("###################\n\n");
 
       double* freq = malloc(Nloop*sizeof(double));
-      PyObject* _freq = PyList_GetItem(list, 19);
+      PyObject* _freq = PyList_GetItem(list, 18);
       Py_ssize_t _freq_size = PyList_Size(_freq);
       for (int j = 0; j < _freq_size; j++) {
         freq[j] = PyFloat_AsDouble(PyList_GetItem(_freq, j));
         if (PyErr_Occurred()) return NULL;
       }
 
-    int Nfreq = PyFloat_AsDouble(PyList_GetItem(list, 20));
+    int Nfreq = PyFloat_AsDouble(PyList_GetItem(list, 19));
     int m = 1;
 
     double *f0r = malloc(Nfreq*sizeof(double));
